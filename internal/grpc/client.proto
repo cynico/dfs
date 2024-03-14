@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package client;
+option go_package = "grpc/client";
+
+import "google/protobuf/empty.proto";
+
+message UploadRequest {
+    int64 fileSize = 1;
+}
+message UploadResponse {
+    string ipv4_address = 1;
+    int32 port = 2;
+}
+
+message Node {
+    string ipv4Address = 1;
+    int32 port = 2;
+}
+
+message DownloadRequest {
+    string fileName = 1;
+}
+message DownloadResponse {
+    // A map of ipv4 addresses as keys, and ports as values.
+    repeated Node nodes = 1;
+    int64 fileSize = 2;
+}
+
+message ListResponse {
+    repeated string files = 1;
+}
+
+service FileServer {
+    rpc Upload (UploadRequest) returns (UploadResponse) {}
+    rpc Download(DownloadRequest) returns (DownloadResponse) {}
+    rpc List(google.protobuf.Empty) returns (ListResponse) {}
+    rpc CheckIfExists(DownloadRequest) returns (google.protobuf.Empty) {}
+}

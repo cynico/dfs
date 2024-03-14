@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+package nodes;
+option go_package = "grpc/nodes";
+
+import "google/protobuf/empty.proto";
+
+message Heartbeat {
+    string uuid = 1;
+}
+
+message FileInfo {
+    string path = 1;
+    int64 fileSize = 2;
+}
+
+message NodeRegistrationRequest {
+    string uuid = 1;
+    int32 clientPort = 2;
+    int32 clusterPort = 3;
+    int64 freeSpace = 4;
+    map<string, FileInfo> files = 5;
+}
+
+message FileOnNode {
+    string uuid = 1;
+    string fileName = 2;
+    FileInfo fileInfo = 3;
+    int64 freeSpace = 4;
+}
+
+message InitiateReplicationRequest {
+    string fileName = 1;
+    string destIpv4Address = 2;
+    int32 destPort = 3;
+}
+
+message ReplicationResponse {
+    int32 port = 1;
+}
+
+message ReplicationRequest {
+    string fileName = 1;
+}
+
+service NodeRegistrar {
+    rpc RegisterNode(NodeRegistrationRequest) returns (google.protobuf.Empty) {}
+}
+
+service HeartbeatTracker {
+    rpc HeartbeatTrack(Heartbeat) returns (google.protobuf.Empty) {}
+}
+
+service FileTracker {
+    rpc TrackFile(FileOnNode) returns (google.protobuf.Empty) {}
+}
+
+service NodeReplication {
+    
+    // Master nodes sends this ReplicateFile to source nodes where the files reside
+    rpc InitiateReplication(InitiateReplicationRequest) returns(google.protobuf.Empty) {}
+
+    // Source nodes sends this rpc to destination nodes where the file will be replicated
+    rpc ReplicateFile(ReplicationRequest) returns(ReplicationResponse) {}
+}
