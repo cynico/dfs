@@ -27,6 +27,7 @@ message FileOnNode {
     string fileName = 2;
     FileInfo fileInfo = 3;
     int64 freeSpace = 4;
+    bool failed = 5;
 }
 
 message InitiateReplicationRequest {

@@ -69,11 +69,13 @@ func upload(filePath string, fsClient clientGRPC.FileServerClient) {
 	util.SendFile(filePath, int64(fileSize), nodeConn)
 
 	// Poll for confirmation from the master
-	for {
+	maxPollTime := 60
+	for maxPollTime > 0 {
 		_, err = fsClient.CheckIfExists(context.Background(), &clientGRPC.DownloadRequest{FileName: fileName})
 		if err != nil {
 			if status.Code(err) == codes.NotFound {
 				time.Sleep(1 * time.Second)
+				maxPollTime--
 				continue
 			} else {
 				log.Fatalf("error checking status of uploaded file: %s\n", err.Error())
@@ -82,6 +84,8 @@ func upload(filePath string, fsClient clientGRPC.FileServerClient) {
 
 		break
 	}
+
+	log.Printf("File %s uploaded successfuly\n", fileName)
 }
 
 func download(dirPath, fileName string, fsClient clientGRPC.FileServerClient) {
@@ -95,6 +99,7 @@ func download(dirPath, fileName string, fsClient clientGRPC.FileServerClient) {
 
 	nodes := res.GetNodes()
 	downloaded := false
+	nodesDownloadedFrom := ""
 	log.Println("List of nodes to try: ", nodes)
 
 	for _, node := range nodes {
@@ -122,11 +127,14 @@ func download(dirPath, fileName string, fsClient clientGRPC.FileServerClient) {
 
 		// Break from the loop after successful download
 		downloaded = true
+		nodesDownloadedFrom = fmt.Sprintf("%s:%d", node.GetIpv4Address(), node.GetPort())
 		break
 	}
 
 	if !downloaded {
 		log.Fatalf("no node available to download the requested file from")
+	} else {
+		log.Printf("Successfully downloaded %s from %s to the current directory\n", fileName, nodesDownloadedFrom)
 	}
 }
 

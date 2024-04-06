@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.2.0
 // - protoc             v3.19.3
-// source: nodes.proto
+// source: grpc/nodes.proto
 
 package nodes
 
@@ -102,7 +102,7 @@ var NodeRegistrar_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "nodes.proto",
+	Metadata: "grpc/nodes.proto",
 }
 
 // HeartbeatTrackerClient is the client API for HeartbeatTracker service.
@@ -188,7 +188,7 @@ var HeartbeatTracker_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "nodes.proto",
+	Metadata: "grpc/nodes.proto",
 }
 
 // FileTrackerClient is the client API for FileTracker service.
@@ -274,7 +274,7 @@ var FileTracker_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "nodes.proto",
+	Metadata: "grpc/nodes.proto",
 }
 
 // NodeReplicationClient is the client API for NodeReplication service.
@@ -400,5 +400,5 @@ var NodeReplication_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "nodes.proto",
+	Metadata: "grpc/nodes.proto",
 }

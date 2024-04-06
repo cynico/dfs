@@ -35,12 +35,18 @@ var (
 	// key is the node's UUID where the file is present,
 	// value is the path on that node, where the file is stored.
 	files map[string]File
+
+	// A list of files that recently failed to persist in the system
+	// Used to notify the client with failure when it polls for file status
+	// And garbage collected every period
+	failedFiles []string
 )
 
 func (u *FileServer) Upload(ctx context.Context, ur *clientGRPC.UploadRequest) (*clientGRPC.UploadResponse, error) {
 
-	// TODO: make sure that the upload requests are fairly distributed across nodes
-	// Finding the first node with available space and returning it
+	// TODO: he order of elements in a map is non-deterministic, but there should be a better
+	// guarantee of sufficient load-balancing.
+	// Finding a node with available space and returning it
 	requestedSpace := ur.GetFileSize()
 	for _, node := range nodes {
 		if node.freeSpace > requestedSpace {
@@ -92,6 +98,19 @@ func (u *FileServer) List(context.Context, *emptypb.Empty) (*clientGRPC.ListResp
 }
 
 func (u *FileServer) CheckIfExists(ctx context.Context, dr *clientGRPC.DownloadRequest) (*emptypb.Empty, error) {
+
+	failed := false
+	for i, failedFile := range failedFiles {
+		if failedFile == dr.FileName {
+			failed = true
+			failedFiles = util.RemoveElementFromSlice(failedFiles, i)
+		}
+	}
+
+	if failed {
+		return nil, status.Errorf(codes.Internal, "node failed to persist file, try again")
+	}
+
 	if _, ok := files[dr.GetFileName()]; ok {
 		return &emptypb.Empty{}, nil
 	} else {
@@ -158,7 +177,11 @@ func (u *HeartbeatTrackerServer) HeartbeatTrack(ctx context.Context, h *nodesGRP
 	}
 
 	nodes[uuid].lastHeartbeatTime = time.Now()
-	// TODO: Update the ip of the node if needs be
+
+	currentIpAddress := strings.Split(peer.Addr.String(), ":")[0]
+	if currentIpAddress != nodes[uuid].ipAddress {
+		nodes[uuid].ipAddress = currentIpAddress
+	}
 
 	log.Printf("Received heartbeat from node with id %s at: %s\n", uuid, peer.Addr.String())
 
@@ -166,6 +189,11 @@ func (u *HeartbeatTrackerServer) HeartbeatTrack(ctx context.Context, h *nodesGRP
 }
 
 func (f *FileTrackerServer) TrackFile(ctx context.Context, fon *nodesGRPC.FileOnNode) (*emptypb.Empty, error) {
+
+	if fon.GetFailed() {
+		failedFiles = append(failedFiles, fon.FileName)
+		return &emptypb.Empty{}, nil
+	}
 
 	_, ok := files[fon.GetFileName()]
 	if !ok {
@@ -225,6 +253,17 @@ func replicate() {
 				continue
 			}
 
+			// TODO: SIGSEGV
+			/*
+				panic: runtime error: invalid memory address or nil pointer dereference
+				[signal SIGSEGV: segmentation violation code=0x1 addr=0x38 pc=0x7f202a]
+
+				goroutine 774 [running]:
+				main.replicate()
+				dfs/master-tracker/main.go:228 +0x40a
+				created by main.main.func1 in goroutine 19
+				dfs/master-tracker/main.go:286 +0x89
+			*/
 			_, err := nodesGRPC.NewNodeReplicationClient(sourceNode.conn).InitiateReplication(context.Background(), &nodesGRPC.InitiateReplicationRequest{
 				FileName:        fileName,
 				DestIpv4Address: node.ipAddress,
@@ -283,6 +322,8 @@ func main() {
 		for {
 			select {
 			case <-replicationTicker.C:
+				// Garbage collecting the list of failed files
+				failedFiles = []string{}
 				go replicate()
 			case <-unalivingTicker.C:
 				go unaliveNodes()

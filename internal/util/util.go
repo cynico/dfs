@@ -140,3 +140,7 @@ func CountTrue(bools ...bool) int {
 	}
 	return count
 }
+
+func RemoveElementFromSlice[T any](slice []T, index int) []T {
+	return append(slice[:index], slice[index+1:]...)
+}

@@ -194,17 +194,20 @@ func handleUpload(c net.Conn, ft nodesGRPC.FileTrackerClient) {
 
 	defer c.Close()
 
+	failed := false
 	fileBasename, _ := util.ReceiveString(c)
 	filePath := fmt.Sprintf("%s/%s", homeDir, fileBasename)
 
 	fileSize, err := util.ReceiveFile(filePath, c)
 	if err != nil {
 		os.Remove(filePath)
+		failed = true
 	}
 
 	freeSpace, err := getFreeSpace()
 	if err != nil {
 		os.Remove(filePath)
+		failed = true
 	}
 
 	if _, err = ft.TrackFile(context.Background(), &nodesGRPC.FileOnNode{
@@ -215,11 +218,14 @@ func handleUpload(c net.Conn, ft nodesGRPC.FileTrackerClient) {
 			FileSize: fileSize,
 		},
 		FreeSpace: freeSpace,
+		Failed:    failed,
 	}); err != nil {
 		os.Remove(filePath)
 	}
 
-	log.Printf("Successfuly stored file at: %s\n", filePath)
+	if !failed {
+		log.Printf("Successfuly stored file at: %s\n", filePath)
+	}
 }
 
 func handleDownload(c net.Conn) {
